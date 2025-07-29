@@ -24,3 +24,26 @@ def handle_hello():
 def get_products():
     products = Product.query.all()
     return jsonify([product.serialize() for product in products])
+
+@api.route('/products', methods=['POST'])
+def create_product():
+    data = request.get_json()
+
+    required_fields = ['name', 'description', 'price', 'image_url']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({"error": f"Falta el campo obligatorio: {field}"}), 400
+
+    new_product = Product(
+        name=data['name'],
+        description=data['description'],
+        price=data['price'],
+        image_url=data['image_url'],
+        aroma=data.get('aroma'),
+        ritual=data.get('ritual')
+    )
+
+    db.session.add(new_product)
+    db.session.commit()
+
+    return jsonify(new_product.serialize()), 201
