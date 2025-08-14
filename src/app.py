@@ -5,15 +5,18 @@ import os
 from flask import Flask, request, jsonify, url_for, send_from_directory
 from flask_migrate import Migrate
 from flask_swagger import swagger
+from dotenv import load_dotenv  # <-- NUEVO
 from api.utils import APIException, generate_sitemap
-from api.models import db
+from api.models import db, User, Product  # <-- AHORA importamos User y Product
 from api.routes import api
 from api.admin import setup_admin
 from api.commands import setup_commands
 
+# Cargar variables de entorno (.env) si existe
+load_dotenv()  # <-- NUEVO
+
 ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
-static_file_dir = os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), '../dist/')
+static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../dist/')
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -21,10 +24,10 @@ app.url_map.strict_slashes = False
 # Database configuration
 db_url = os.getenv("DATABASE_URL")
 if db_url is not None:
-    app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace(
-        "postgres://", "postgresql://")
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace("postgres://", "postgresql://")
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/test.db"
+    BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'mydb.sqlite')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -42,15 +45,11 @@ setup_commands(app)
 app.register_blueprint(api, url_prefix='/api')
 
 # Error handler
-
-
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
 # Sitemap endpoint
-
-
 @app.route('/')
 def sitemap():
     if ENV == "development":
@@ -58,8 +57,6 @@ def sitemap():
     return send_from_directory(static_file_dir, 'index.html')
 
 # Serve any other static files
-
-
 @app.route('/<path:path>', methods=['GET'])
 def serve_any_other_file(path):
     if not os.path.isfile(os.path.join(static_file_dir, path)):
@@ -67,7 +64,6 @@ def serve_any_other_file(path):
     response = send_from_directory(static_file_dir, path)
     response.cache_control.max_age = 0  # avoid cache memory
     return response
-
 
 # Run app if executed directly
 if __name__ == '__main__':
